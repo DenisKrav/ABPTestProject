@@ -1,3 +1,4 @@
+using ABPTestProject.CustomModels;
 using ABPTestProject.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Drawing;
@@ -31,8 +32,8 @@ namespace ABPTestProject.Controllers
                 db.SiteVisitors.Add(new SiteVisitor
                 {
                     DeviceToken = device_token,
-                    ButtonColor = CheckColor(),
-                    Price = 10
+                    ButtonColor = GetColor(),
+                    Price = GetPrice()
                 });
 
                 await db.SaveChangesAsync();
@@ -43,7 +44,7 @@ namespace ABPTestProject.Controllers
 
         // Метод для перевірки кольору, скільки яких кольорів у бд і повртає кольор,
         // який доцільніше присвоїти новому користувачу, для балансу кольорів.
-        private string CheckColor()
+        private string GetColor()
         {
             string color;
 
@@ -53,7 +54,7 @@ namespace ABPTestProject.Controllers
                 .Select(group => new   
                 {      
                     Color = group.Key,    
-                    Count = group.Count()   
+                    ColorCount = group.Count()   
                 })   
                 .ToList();
 
@@ -61,13 +62,52 @@ namespace ABPTestProject.Controllers
             color = buttonColorCounts[0].Color;
             for (int i = 1; i < buttonColorCounts.Count(); i++)
             {
-                if (buttonColorCounts[i - 1].Count > buttonColorCounts[i].Count)
+                if (buttonColorCounts[i - 1].ColorCount > buttonColorCounts[i].ColorCount)
                 {
                     color = buttonColorCounts[i].Color;
                 }
             }
 
             return color;
+        }
+
+        private decimal GetPrice()
+        {
+            decimal price = 0;
+            int totalUserCount = db.SiteVisitors .Count();
+
+            List<UserPriceModel> priceCounts = db.SiteVisitors
+                .GroupBy(a => a.Price)
+                .Select(group => new UserPriceModel
+                {
+                    Price = group.Key,
+                    SpecificPriceCount = group.Count()
+                })
+                .ToList();
+
+            if (GetProcent(priceCounts, totalUserCount, 10) < 0.75)
+            {
+                return 10;
+            }
+            else if(GetProcent(priceCounts, totalUserCount, 20) < 0.1)
+            {
+                return 20;
+            }
+            else if (GetProcent(priceCounts, totalUserCount, 50) < 0.05)
+            {
+                return 50;
+            }
+            else
+            {
+                return 5;
+            }
+        }
+
+        private double GetProcent(List<UserPriceModel> pricesCounts, int totalCount, int priceForCulculate)
+        {
+            int countOfPrice = pricesCounts.FirstOrDefault(item => item.Price == priceForCulculate)?.SpecificPriceCount ?? 0;
+
+            return (double)countOfPrice / totalCount;
         }
     }
 }
