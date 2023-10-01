@@ -29,27 +29,23 @@ namespace ABPTestProject.Controllers
         [HttpGet("button_color/{device_token}")]
         public async Task<string> GetButtonColor(string device_token)
         {
-            string? color;
+            await CheckToken(device_token);
 
-            if (db.SiteVisitors.Any(a => a.DeviceToken == device_token))
-            {
-                color = db.SiteVisitors.FirstOrDefault(a => a.DeviceToken == device_token)?.ButtonColor;
-            }
-            else
-            {
-                db.SiteVisitors.Add(new SiteVisitor
-                {
-                    DeviceToken = device_token,
-                    ButtonColor = color = GetColor(db.SiteVisitors.Count()),
-                    Price = GetPrice()
-                });
-
-                await db.SaveChangesAsync();
-            }
-
-
-            return JsonSerializer.Serialize(new ButtonColorExperimentDTO { Value = color });
+            return JsonSerializer.Serialize(new ButtonColorExperimentDTO {
+                Value = db.SiteVisitors.FirstOrDefault(a => a.DeviceToken == device_token)?.ButtonColor
+            });
         }
+
+        [HttpGet("price/{device_token}")]
+        public async Task<string> GetPrice(string device_token)
+        {
+            await CheckToken(device_token);
+
+            return JsonSerializer.Serialize(new PriceExperimentDTO {
+                Value = db.SiteVisitors.FirstOrDefault(a => a.DeviceToken == device_token)?.Price 
+            });
+        }
+
 
         // Метод для перевірки кольору, скільки яких кольорів у бд і повртає кольор,
         // який доцільніше присвоїти новому користувачу, для балансу кольорів.
@@ -81,6 +77,7 @@ namespace ABPTestProject.Controllers
         //}
 
         // Метод, який повертає для перших участників експеременту кольори кнопок
+
         private string GetColor(int numberExperimentsUser)
         {
             return buttonColorsVariants[numberExperimentsUser % 3];
@@ -126,5 +123,27 @@ namespace ABPTestProject.Controllers
 
             return (double)countOfPrice / totalCount;
         }
+
+
+        // Метод перевірки токена
+        private async Task CheckToken(string device_token)
+        {
+            if (db.SiteVisitors.Any(a => a.DeviceToken == device_token))
+            {
+                return;
+            }
+            else
+            {
+                db.SiteVisitors.Add(new SiteVisitor
+                {
+                    DeviceToken = device_token,
+                    ButtonColor = GetColor(db.SiteVisitors.Count()),
+                    Price  = GetPrice()
+                });
+
+                await db.SaveChangesAsync();
+            }
+        }
+
     }
 }
