@@ -26,6 +26,7 @@ namespace ABPTestProject.Controllers
             db = context;
         }
 
+        // Ендпоінт для експеременту з кольором кнопки
         [HttpGet("button_color/{device_token}")]
         public async Task<string> GetButtonColor(string device_token)
         {
@@ -36,6 +37,7 @@ namespace ABPTestProject.Controllers
             });
         }
 
+        // Ендпоінт для експеременту з цінами
         [HttpGet("price/{device_token}")]
         public async Task<string> GetPrice(string device_token)
         {
@@ -46,42 +48,49 @@ namespace ABPTestProject.Controllers
             });
         }
 
-
-        // Метод для перевірки кольору, скільки яких кольорів у бд і повртає кольор,
-        // який доцільніше присвоїти новому користувачу, для балансу кольорів.
-        //private string GetColor()
-        //{
-        //    string color;
-
-        //    // Підрахунок кольорів кнопок у бд
-        //    var buttonColorCounts = db.SiteVisitors
-        //        .GroupBy(a => a.ButtonColor)   
-        //        .Select(group => new   
-        //        {      
-        //            Color = group.Key,    
-        //            ColorCount = group.Count()   
-        //        })   
-        //        .ToList();
-
-        //    // Вирахування, який колір присвоїти новому користувачу
-        //    color = buttonColorCounts[0].Color;
-        //    for (int i = 1; i < buttonColorCounts.Count(); i++)
-        //    {
-        //        if (buttonColorCounts[i - 1].ColorCount > buttonColorCounts[i].ColorCount)
-        //        {
-        //            color = buttonColorCounts[i].Color;
-        //        }
-        //    }
-
-        //    return color;
-        //}
-
-        // Метод, який повертає для перших участників експеременту кольори кнопок
-
-        private string GetColor(int numberExperimentsUser)
+        // Метод, який повертає колір, але враховує можливість перебоїв та пауз експеремента, тобто метод аналізує бд, 
+        // перед тим як повернути колір
+        private string GetColor()
         {
-            return buttonColorsVariants[numberExperimentsUser % 3];
+            string color;
+
+            // Підрахунок кольорів кнопок у бд
+            var buttonColorCounts = db.SiteVisitors
+                .GroupBy(a => a.ButtonColor)
+                .Select(group => new
+                {
+                    Color = group.Key,
+                    ColorCount = group.Count()
+                })
+                .ToList();
+
+            if (buttonColorCounts.Count() < 3)
+            {
+                color = buttonColorsVariants[buttonColorCounts.Count()];
+                return color;
+            }
+            else
+            {
+                // Вирахування, який колір присвоїти новому користувачу
+                color = buttonColorCounts[0].Color;
+
+                for (int i = 1; i < buttonColorCounts.Count(); i++)
+                {
+                    if (buttonColorCounts[i - 1].ColorCount > buttonColorCounts[i].ColorCount)
+                    {
+                        color = buttonColorCounts[i].Color;
+                    }
+                }
+
+                return color;
+            }
         }
+        // Метод, який поветає колір кнопки для учасників, але за усовою, якщо експеремент почався і продовжується без пауз 
+        // та перерв
+        //private string GetColor(int numberExperimentsUser)
+        //{
+        //    return buttonColorsVariants[numberExperimentsUser % 3];
+        //}
 
         // Метод для отримання ціни, яку буде показано користувачу
         private decimal GetPrice()
@@ -89,9 +98,9 @@ namespace ABPTestProject.Controllers
             decimal price = 0;
             int totalUserCount = db.SiteVisitors .Count();
 
-            List<UserPriceModel> priceCounts = db.SiteVisitors
+            List<UserPricesCountModel> priceCounts = db.SiteVisitors
                 .GroupBy(a => a.Price)
-                .Select(group => new UserPriceModel
+                .Select(group => new UserPricesCountModel
                 {
                     Price = group.Key,
                     SpecificPriceCount = group.Count()
@@ -117,13 +126,12 @@ namespace ABPTestProject.Controllers
         }
 
         // Метод для вираховування процента для кожної ціни від загальної
-        private double GetProcent(List<UserPriceModel> pricesCounts, int totalCount, int priceForCulculate)
+        private double GetProcent(List<UserPricesCountModel> pricesCounts, int totalCount, int priceForCulculate)
         {
             int countOfPrice = pricesCounts.FirstOrDefault(item => item.Price == priceForCulculate)?.SpecificPriceCount ?? 0;
 
             return (double)countOfPrice / totalCount;
         }
-
 
         // Метод перевірки токена
         private async Task CheckToken(string device_token)
@@ -137,7 +145,7 @@ namespace ABPTestProject.Controllers
                 db.SiteVisitors.Add(new SiteVisitor
                 {
                     DeviceToken = device_token,
-                    ButtonColor = GetColor(db.SiteVisitors.Count()),
+                    ButtonColor = GetColor(/*db.SiteVisitors.Count()*/),
                     Price  = GetPrice()
                 });
 

@@ -1,6 +1,6 @@
 ﻿namespace ABPTestProject.CustomModels
 {
-    public class UserPriceModel
+    public class UserPricesCountModel
     {
         public decimal? Price { get; set; }
 
