@@ -48,6 +48,33 @@ namespace ABPTestProject.Controllers
             });
         }
 
+        // Ендпоінт для статистики
+        [HttpGet("statistic")]
+        public string GetStatistic()
+        {
+            StatisticDTO statistic = new StatisticDTO();
+
+            statistic.SumuryCount = db.SiteVisitors.Count();
+            statistic.Prices = db.SiteVisitors
+                .GroupBy(a => a.Price)
+                .Select(group => new UserPricesCountModel
+                {
+                    Price = group.Key,
+                    SpecificPriceCount = group.Count()
+                })
+                .ToList();
+            statistic.ButtonColors = db.SiteVisitors
+                .GroupBy(a => a.ButtonColor)
+                .Select(group => new UserButtonColorsCountModel
+                {
+                    Color = group.Key,
+                    SpecificColorCount = group.Count()
+                })
+                .ToList();
+
+            return JsonSerializer.Serialize(statistic);
+        }
+
         // Метод, який повертає колір, але враховує можливість перебоїв та пауз експеремента, тобто метод аналізує бд, 
         // перед тим як повернути колір
         private string GetColor()
@@ -55,12 +82,12 @@ namespace ABPTestProject.Controllers
             string color;
 
             // Підрахунок кольорів кнопок у бд
-            var buttonColorCounts = db.SiteVisitors
+            List<UserButtonColorsCountModel> buttonColorCounts = db.SiteVisitors
                 .GroupBy(a => a.ButtonColor)
-                .Select(group => new
+                .Select(group => new UserButtonColorsCountModel
                 {
                     Color = group.Key,
-                    ColorCount = group.Count()
+                    SpecificColorCount = group.Count()
                 })
                 .ToList();
 
@@ -76,7 +103,7 @@ namespace ABPTestProject.Controllers
 
                 for (int i = 1; i < buttonColorCounts.Count(); i++)
                 {
-                    if (buttonColorCounts[i - 1].ColorCount > buttonColorCounts[i].ColorCount)
+                    if (buttonColorCounts[i - 1].SpecificColorCount > buttonColorCounts[i].SpecificColorCount)
                     {
                         color = buttonColorCounts[i].Color;
                     }
@@ -95,7 +122,6 @@ namespace ABPTestProject.Controllers
         // Метод для отримання ціни, яку буде показано користувачу
         private decimal GetPrice()
         {
-            decimal price = 0;
             int totalUserCount = db.SiteVisitors .Count();
 
             List<UserPricesCountModel> priceCounts = db.SiteVisitors
